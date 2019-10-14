@@ -1,0 +1,13 @@
+## Use for CPU
+tensorflow==1.14.0
+
+## Uncomment if you have CUDA-enabled GPU
+# tensorflow-gpu==1.14.0
+
+keras==2.2.4
+cython
+h5py==2.8.0
+scikit-image==0.15.0
+opencv-python==4.1.1.26
+matplotlib
+jupyter
