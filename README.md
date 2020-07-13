@@ -1,6 +1,8 @@
-# MaskRCNN Utils
+# Mask R-CNN Utils
 
 Mask R-CNN is an algorithm for instance segmentation.
+
+Based on:  https://github.com/matterport/Mask_RCNN ("Training on Your Own Dataset" section)
 
 This repository allows the user
 - [x] Bring their own data
@@ -61,5 +63,10 @@ Get the model from <a href="https://github.com/matterport/Mask_RCNN/releases/tag
 ## Run the trained model in a Python app
 
 Navigate to this repo for an example application to showcase the model:  https://github.com/michhar/maskrcnn-python-app
+
+## Credits
+
+- https://github.com/matterport/Mask_RCNN
+- https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
 
 
