@@ -5,6 +5,8 @@ customImages
 *.jpg
 *.png
 *.h5
+data/
+logs/
 
 .DS_Store
 

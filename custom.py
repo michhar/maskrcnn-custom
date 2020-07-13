@@ -1,10 +1,11 @@
 """
 Mask R-CNN
-Train on the toy Balloon dataset and implement color splash effect.
+Train on a single class dataset and implement color splash effect.
 
 Copyright (c) 2018 Matterport, Inc.
 Licensed under the MIT License (see LICENSE for details)
 Written by Waleed Abdulla
+Modified by Micheleen Harris
 
 ------------------------------------------------------------
 
@@ -12,19 +13,19 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
        the command line as such:
 
     # Train a new model starting from pre-trained COCO weights
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=coco
+    python3 custom.py train --dataset=/path/to/balloon/dataset --weights=coco
 
     # Resume training a model that you had trained earlier
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=last
+    python3 custom.py train --dataset=/path/to/balloon/dataset --weights=last
 
     # Train a new model starting from ImageNet weights
-    python3 balloon.py train --dataset=/path/to/balloon/dataset --weights=imagenet
+    python3 custom.py train --dataset=/path/to/balloon/dataset --weights=imagenet
 
     # Apply color splash to an image
-    python3 balloon.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
+    python3 custom.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
 
     # Apply color splash to video using the last weights you trained
-    python3 balloon.py splash --weights=last --video=<URL or path to file>
+    python3 custom.py splash --weights=last --video=<URL or path to file>
 """
 
 import os
@@ -39,7 +40,7 @@ from timeit import default_timer as timer
 
 
 # Root directory of the project
-ROOT_DIR = os.path.abspath("../../")
+ROOT_DIR = os.path.abspath(".")
 
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
@@ -66,14 +67,14 @@ class CustomConfig(Config):
     Derives from the base Config class and overrides some values.
     """
     # Give the configuration a recognizable name
-    NAME = "damage"
+    NAME = "experiment"
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
     IMAGES_PER_GPU = 2
 
-    # Number of classes (including background)
-    NUM_CLASSES = 1 + 1  # Background + toy
+    # Number of classes - single image supported only now (including background)
+    NUM_CLASSES = 1 + 1  # Background + object of interest
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 100
@@ -89,12 +90,12 @@ class CustomConfig(Config):
 class CustomDataset(utils.Dataset):
 
     def load_custom(self, dataset_dir, subset):
-        """Load a subset of the Balloon dataset.
+        """Load a subset of the dataset.
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val
         """
-        # Add classes. We have only one class to add.
-        self.add_class("damage", 1, "damage")
+        # Add classes. Only one class is supported right now.
+        self.add_class("class1", 1, "class1")
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -130,6 +131,10 @@ class CustomDataset(utils.Dataset):
             # the outline of each object instance. There are stores in the
             # shape_attributes (see json format above)
             polygons = [r['shape_attributes'] for r in a['regions'].values()]
+            class_names_each_region = [r['region_attributes']['name'] if 'name' in r['region_attributes'] 
+                                          else r['region_attributes']['Class Name'] for r in a['regions'].values()]
+            print(a['filename'], class_names_each_region)
+
 
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
@@ -139,7 +144,7 @@ class CustomDataset(utils.Dataset):
             height, width = image.shape[:2]
 
             self.add_image(
-                "damage",  ## for a single class just add the name here
+                source=class_names_each_region[0],  ## for a single class only right now
                 image_id=a['filename'],  # use file name as a unique image id
                 path=image_path,
                 width=width, height=height,
@@ -152,10 +157,10 @@ class CustomDataset(utils.Dataset):
             one mask per instance.
         class_ids: a 1D array of class IDs of the instance masks.
         """
-        # If not a balloon dataset image, delegate to parent class.
+        # If not a class1 dataset image, delegate to parent class.
         image_info = self.image_info[image_id]
-        if image_info["source"] != "damage":
-            return super(self.__class__, self).load_mask(image_id)
+        # if image_info["source"] != "damage":
+        #     return super(self.__class__, self).load_mask(image_id)
 
         # Convert polygons to a bitmap mask of shape
         # [height, width, instance_count]
@@ -174,7 +179,7 @@ class CustomDataset(utils.Dataset):
     def image_reference(self, image_id):
         """Return the path of the image."""
         info = self.image_info[image_id]
-        if info["source"] == "damage":
+        if info["source"] == "objects":
             return info["path"]
         else:
             super(self.__class__, self).image_reference(image_id)
@@ -438,7 +443,7 @@ if __name__ == '__main__':
     if args.command == "train":
         train(model)
     elif args.command == 'image':
-         detect_and_draw_image(model, image_path=args.image, class_names=['BG', 'damage'])       
+         detect_and_draw_image(model, image_path=args.image, class_names=['BG', 'class1'])
     elif args.command == "splash":
         detect_and_color_splash(model, image_path=args.image,
                                 video_path=args.video)
