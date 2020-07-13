@@ -36,12 +36,12 @@ Use VGG Image Annotator to label your images for instance segmentation
 - Upload each set separately (e.g. upload only train images to browser app)
 - Create an Attribute --> "Regions Attributes" tag by typing "name" in the "attribute name" field, seleting "+" and keeping the default setting, ensuring "Name" is also "name.
 
-<img width="50%" src='/media/create_tag.png'>
+<img width="50%" src='media/create_tag.png'>
 
 
 - Label using polygons and then clicking back on the polygon to select the tag "name", then typing in the class name, ensuring consistent spelling for each class.
 
-<img width="50%" src='/media/select_tag.png'>
+<img width="50%" src='media/select_tag.png'>
 
 
 

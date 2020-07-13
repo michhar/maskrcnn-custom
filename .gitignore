@@ -2,11 +2,12 @@ customImages
 *.mov
 *.avi
 *.mp4
-*.jpg
-*.png
+splash_*
+result_*
 *.h5
 data/
 logs/
+test/
 
 .DS_Store
 
