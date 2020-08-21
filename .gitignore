@@ -5,7 +5,7 @@ customImages
 splash_*
 result_*
 *.h5
-data/
+data*
 logs/
 test/
 

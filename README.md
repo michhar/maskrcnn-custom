@@ -36,7 +36,9 @@ Download the <a href="http://www.robots.ox.ac.uk/~vgg/software/via/" target="_bl
 Use VGG Image Annotator to label your images for instance segmentation
 - Open VGG Image Annotator in the browser (IMPORTANT:  make sure you do not refresh browser before saving because it will wipe all of the images and labels loaded/created)
 - Upload each set separately (e.g. upload only train images to browser app)
-- Create an Attribute --> "Regions Attributes" tag by typing "name" in the "attribute name" field, seleting "+" and keeping the default setting, ensuring "Name" is also "name.
+- Create an Attribute --> "Regions Attributes" tag by typing "name" in the "attribute name" field, seleting "+" and keeping the default setting, ensuring "Name" is also "name".
+
+IMPORTANT:  give the attribute/label a "Def." or default name of "class1" (if this is different change it in `custom.py` on line 98 as well).
 
 <img width="50%" src='media/create_tag.png'>
 

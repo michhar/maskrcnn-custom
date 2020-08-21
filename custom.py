@@ -94,7 +94,7 @@ class CustomDataset(utils.Dataset):
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val
         """
-        # Add classes. Only one class is supported right now.
+        # Add classes (change name as needed). Only one class is supported right now.
         self.add_class("class1", 1, "class1")
 
         # Train or validation dataset?
@@ -127,12 +127,12 @@ class CustomDataset(utils.Dataset):
         # Add images
         for a in annotations:
             # print(a)
-            # Get the x, y coordinaets of points of the polygons that make up
+            # Get the x, y coordinates of points of the polygons that make up
             # the outline of each object instance. There are stores in the
             # shape_attributes (see json format above)
-            polygons = [r['shape_attributes'] for r in a['regions'].values()]
+            polygons = [r['shape_attributes'] for r in a['regions']]
             class_names_each_region = [r['region_attributes']['name'] if 'name' in r['region_attributes'] 
-                                          else r['region_attributes']['Class Name'] for r in a['regions'].values()]
+                                          else r['region_attributes']['name'] for r in a['regions']]
             print(a['filename'], class_names_each_region)
 
 
