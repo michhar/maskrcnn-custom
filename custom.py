@@ -71,13 +71,13 @@ class CustomConfig(Config):
 
     # We use a GPU with 12GB memory, which can fit two images.
     # Adjust down if you use a smaller GPU.
-    IMAGES_PER_GPU = 2
+    IMAGES_PER_GPU = 1
 
     # Number of classes - single image supported only now (including background)
     NUM_CLASSES = 1 + 1  # Background + object of interest
 
     # Number of training steps per epoch
-    STEPS_PER_EPOCH = 100
+    STEPS_PER_EPOCH = 10
 
     # Skip detections with < 90% confidence
     DETECTION_MIN_CONFIDENCE = 0.9
@@ -204,7 +204,7 @@ def train(model):
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=10,
+                epochs=40,
                 layers='heads')
 
 
@@ -310,7 +310,8 @@ def detect_and_color_splash_video(model, video_path=None, output_path="splash.mo
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
-    video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
+    # video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
+    video_FourCC = cv2.VideoWriter_fourcc(*"mp4v")
     video_fps       = vid.get(cv2.CAP_PROP_FPS)
     video_size      = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)),
                         int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -324,30 +325,31 @@ def detect_and_color_splash_video(model, video_path=None, output_path="splash.mo
     prev_time = timer()
     while True:
         return_value, frame = vid.read()
-        # OpenCV returns images as BGR, convert to RGB
-        image = frame[..., ::-1]
-        # Detect objects
-        r = model.detect([image], verbose=0)[0]
-        # Color splash
-        splash = color_splash(image, r['masks'])
-
-        curr_time = timer()
-        exec_time = curr_time - prev_time
-        prev_time = curr_time
-        accum_time = accum_time + exec_time
-        curr_fps = curr_fps + 1
-        if accum_time > 1:
-            accum_time = accum_time - 1
-            fps = "FPS: " + str(curr_fps)
-            curr_fps = 0
-        cv2.putText(splash, text=fps, org=(3, 15), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=0.50, color=(255, 0, 0), thickness=2)
-        cv2.namedWindow("result", cv2.WINDOW_NORMAL)
-        cv2.imshow("result", splash)
-        if isOutput:
+        if return_value:
+            # OpenCV returns images as BGR, convert to RGB
+            image = frame[..., ::-1]
+            # Detect objects
+            r = model.detect([image], verbose=0)[0]
+            # Color splash
+            splash = color_splash(image, r['masks'])
             # RGB -> BGR to save image to video
             splash = splash[..., ::-1]
-            out.write(splash)
+
+            curr_time = timer()
+            exec_time = curr_time - prev_time
+            prev_time = curr_time
+            accum_time = accum_time + exec_time
+            curr_fps = curr_fps + 1
+            if accum_time > 1:
+                accum_time = accum_time - 1
+                fps = "FPS: " + str(curr_fps)
+                curr_fps = 0
+            cv2.putText(splash, text=fps, org=(3, 15), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                        fontScale=0.50, color=(255, 0, 0), thickness=2)
+            cv2.namedWindow("result", cv2.WINDOW_NORMAL)
+            cv2.imshow("result", splash)
+            if isOutput:
+                out.write(splash)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
