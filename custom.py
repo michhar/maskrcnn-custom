@@ -57,6 +57,9 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # through the command line argument --logs
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
+# CLASS NAME - only one please
+CLASS_NAME = 'pill'
+
 ############################################################
 #  Configurations
 ############################################################
@@ -95,7 +98,7 @@ class CustomDataset(utils.Dataset):
         subset: Subset to load: train or val
         """
         # Add classes (change name as needed). Only one class is supported right now.
-        self.add_class("class1", 1, "class1")
+        self.add_class(CLASS_NAME, 1, CLASS_NAME)
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -353,8 +356,59 @@ def detect_and_color_splash_video(model, video_path=None, output_path="splash.mo
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+def detect_classic_in_video(model, video_path=None, output_path="detection.mov"):
+    class_names = ['BG', CLASS_NAME]
+    vid = cv2.VideoCapture(video_path)
+    if not vid.isOpened():
+        raise IOError("Couldn't open webcam or video")
+    # video_FourCC    = int(vid.get(cv2.CAP_PROP_FOURCC))
+    video_FourCC = cv2.VideoWriter_fourcc(*"mp4v")
+    video_fps       = vid.get(cv2.CAP_PROP_FPS)
+    video_size      = (int(vid.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                        int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT)))
+    isOutput = True if output_path != None else False
+    if isOutput:
+        print("!!! TYPE:", type(output_path), type(video_FourCC), type(video_fps), type(video_size))
+        out = cv2.VideoWriter(output_path, video_FourCC, video_fps, video_size)
+    accum_time = 0
+    curr_fps = 0
+    fps = "FPS: ??"
+    prev_time = timer()
+    while True:
+        return_value, frame = vid.read()
+        if return_value:
+            # OpenCV returns images as BGR, convert to RGB
+            image = frame[..., ::-1]
+            # Detect objects
+            r = model.detect([image], verbose=0)[0]
+            # RGB -> BGR for OpenCV
+            image = image[..., ::-1]
+            # Display results
+            ax = get_ax(1)
+            image_file = display_instances(frame, r['rois'], r['masks'], r['class_ids'], 
+                                        class_names, r['scores'],
+                                        title="Predictions")
+
+            curr_time = timer()
+            exec_time = curr_time - prev_time
+            prev_time = curr_time
+            accum_time = accum_time + exec_time
+            curr_fps = curr_fps + 1
+            if accum_time > 1:
+                accum_time = accum_time - 1
+                fps = "FPS: " + str(curr_fps)
+                curr_fps = 0
+            cv2.putText(image_file, text=fps, org=(3, 15), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                        fontScale=0.50, color=(255, 0, 0), thickness=2)
+            cv2.namedWindow("result", cv2.WINDOW_NORMAL)
+            cv2.imshow("result", image_file)
+            if isOutput:
+                out.write(image_file)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
 ############################################################
-#  Training
+#  Training and inferencing with arguments
 ############################################################
 
 if __name__ == '__main__':
@@ -365,7 +419,7 @@ if __name__ == '__main__':
         description='Train Mask R-CNN to detect custom class.')
     parser.add_argument("command",
                         metavar="<command>",
-                        help="'train', 'splash', or 'splash_movie'")
+                        help="'train', 'splash', 'splash_movie or 'classic_movie'")
     parser.add_argument('--dataset', required=False,
                         metavar="/path/to/custom/dataset/",
                         help='Directory of the custom dataset')
@@ -451,6 +505,9 @@ if __name__ == '__main__':
                                 video_path=args.video)
     elif args.command == "splash_movie":
         detect_and_color_splash_video(model, video_path=args.video)
+    elif args.command == "classic_movie":
+        detect_classic_in_video(model, video_path=args.video)
+    
     else:
         print("'{}' is not recognized. "
-              "Use 'train', 'splash' or 'splash_movie".format(args.command))
+              "Use 'train', 'splash', 'splash_movie' or 'classic_movie'".format(args.command))
