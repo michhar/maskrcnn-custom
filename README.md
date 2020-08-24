@@ -72,13 +72,17 @@ or, alternatively:
 
 ## Inference
 
-- Apply color splash to an image
+- Apply color splash to an image (all greyscale except for masks which show original color - see Credits)
 
 `python3 custom.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>`
 
 - Apply color splash to video using the last weights you trained
 
-`python3 custom.py splash --weights=last --video=<URL or path to file>`
+`python3 custom.py splash_movie --weights=last --video=<URL or path to file>`
+
+- Apply regular detection (bounding box and scores) and masking to video
+
+`python3 custom.py classic_movie  --weights=/path/to/weights/file.h5 --video=<URL or path to file>`
 
 For help, type `python3 custom.py --help`
 
@@ -88,7 +92,7 @@ Navigate to this repo for an example application to demo the model:  https://git
 
 ## Credits
 
-- https://github.com/matterport/Mask_RCNN
-- https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46
+- [Mask R-CNN for Object Detection and Segmentation codebase](https://github.com/matterport/Mask_RCNN)
+- [Splash of Color: Instance Segmentation with Mask R-CNN and TensorFlow](https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46)
 
 
