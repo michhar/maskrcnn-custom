@@ -25,7 +25,10 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
     python3 custom.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
 
     # Apply color splash to video using the last weights you trained
-    python3 custom.py splash --weights=last --video=<URL or path to file>
+    python3 custom.py splash_movie --weights=last --video=<URL or path to file>
+
+    # Apply regular detection and masking to video
+    python3 custom.py classic_movie  --weights=/path/to/weights/file.h5 --video=<URL or path to file>
 """
 
 import os
