@@ -100,6 +100,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
     colors: (optional) An array or colors to use with each object
     captions: (optional) A list of strings to use as captions for each object
     """
+    print('class_ids ', class_ids)
     # Number of instances
     N = boxes.shape[0]
     if not N:
@@ -155,7 +156,7 @@ def display_instances(image, boxes, masks, class_ids, class_names,
         if show_mask:
             masked_image = apply_mask(masked_image, mask, color)
         if show_bbox:
-            thickness = 2
+            thickness = 1
             # masked_image = draw_box(masked_image, boxes[i], color, caption)
             masked_image = masked_image.astype(np.uint8)
             color = tuple(np.array(list(color))*255)
@@ -163,7 +164,9 @@ def display_instances(image, boxes, masks, class_ids, class_names,
 
             # Add scores text
             font = cv2.FONT_HERSHEY_SIMPLEX
-            cv2.putText(masked_image, caption, (x1, y1+8), font, 1, color, thickness)
+            font_scale = min(1, 20/width)
+            print(caption)
+            cv2.putText(masked_image, caption, (x1, y1+8), font, font_scale, color, thickness)
     
 
         # # Mask Polygon

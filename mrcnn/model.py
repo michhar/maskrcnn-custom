@@ -1275,12 +1275,14 @@ def load_image_gt(dataset, config, image_id, augment=False, augmentation=None,
     # bbox: [num_instances, (y1, x1, y2, x2)]
     bbox = utils.extract_bboxes(mask)
 
-    # Active classes
+    # Active classes - supporting multiple classes
     # Different datasets have different classes, so track the
     # classes supported in the dataset of this image.
-    active_class_ids = np.zeros([dataset.num_classes], dtype=np.int32)
-    source_class_ids = dataset.source_class_ids[dataset.image_info[image_id]["source"]]
-    active_class_ids[source_class_ids] = 1
+    ids = []
+    for cls_inst in dataset.image_info[image_id]["source"]:
+        # append non-BG class
+        ids.append(dataset.source_class_ids[cls_inst][1])
+    active_class_ids = np.array(ids, dtype=np.int32)
 
     # Resize masks to smaller size to reduce memory usage
     if use_mini_mask:

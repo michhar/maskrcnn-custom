@@ -57,8 +57,8 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # through the command line argument --logs
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
-# CLASS NAME - only one please
-CLASS_NAME = 'pill'
+# CLASS NAME - USER MUST UPDATE!
+CLASS_NAME = {'eye':1, 'nose':2}
 
 ############################################################
 #  Configurations
@@ -77,7 +77,7 @@ class CustomConfig(Config):
     IMAGES_PER_GPU = 1
 
     # Number of classes - single image supported only now (including background)
-    NUM_CLASSES = 1 + 1  # Background + object of interest
+    NUM_CLASSES = 1 + len(CLASS_NAME.keys())  # Background + object(s) of interest
 
     # Number of training steps per epoch
     STEPS_PER_EPOCH = 10
@@ -97,8 +97,9 @@ class CustomDataset(utils.Dataset):
         dataset_dir: Root directory of the dataset.
         subset: Subset to load: train or val
         """
-        # Add classes (change name as needed). Only one class is supported right now.
-        self.add_class(CLASS_NAME, 1, CLASS_NAME)
+        # Add classes (change name as needed).
+        for class_name in CLASS_NAME.keys():
+            self.add_class(class_name, CLASS_NAME[class_name], class_name)
 
         # Train or validation dataset?
         assert subset in ["train", "val"]
@@ -119,9 +120,9 @@ class CustomDataset(utils.Dataset):
         #   'size': 100202
         # }
         # We mostly care about the x and y coordinates of each region
-        annotations1 = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
+        annotations_dict = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
         # print(annotations1)
-        annotations = list(annotations1.values())  # don't need the dict keys
+        annotations = list(annotations_dict.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
         # annotations. Skip unannotated images.
@@ -134,8 +135,8 @@ class CustomDataset(utils.Dataset):
             # the outline of each object instance. There are stores in the
             # shape_attributes (see json format above)
             polygons = [r['shape_attributes'] for r in a['regions']]
-            class_names_each_region = [r['region_attributes']['name'] if 'name' in r['region_attributes'] 
-                                          else r['region_attributes']['name'] for r in a['regions']]
+            class_names_each_region = [r['region_attributes']['type'] if 'type' in r['region_attributes'] 
+                                          else r['region_attributes']['type'] for r in a['regions']]
             print(a['filename'], class_names_each_region)
 
 
@@ -147,7 +148,7 @@ class CustomDataset(utils.Dataset):
             height, width = image.shape[:2]
 
             self.add_image(
-                source=class_names_each_region[0],  ## for a single class only right now
+                source=class_names_each_region,  ## for a single class only right now
                 image_id=a['filename'],  # use file name as a unique image id
                 path=image_path,
                 width=width, height=height,
@@ -168,7 +169,7 @@ class CustomDataset(utils.Dataset):
         # Convert polygons to a bitmap mask of shape
         # [height, width, instance_count]
         info = self.image_info[image_id]
-        mask = np.zeros([info["height"], info["width"], len(info["polygons"])],
+        mask = np.zeros([info['height'], info['width'], len(info['polygons'])],
                         dtype=np.uint8)
         for i, p in enumerate(info["polygons"]):
             # Get indexes of pixels inside the polygon and set them to 1
@@ -177,7 +178,11 @@ class CustomDataset(utils.Dataset):
 
         # Return mask, and array of class IDs of each instance. Since we have
         # one class ID only, we return an array of 1s
-        return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
+        # return mask.astype(np.bool), np.ones([mask.shape[-1]], dtype=np.int32)
+        class_ids = []
+        for cls_name in info['source']:
+            class_ids.append(CLASS_NAME[cls_name])
+        return mask.astype(np.bool), np.array(class_ids, dtype=np.int32)
 
     def image_reference(self, image_id):
         """Return the path of the image."""
@@ -241,27 +246,32 @@ def get_ax(rows=1, cols=1, size=16):
     _, ax = plt.subplots(rows, cols, figsize=(size*cols, size*rows))
     return ax
 
-def detect_and_draw_image(model, image_path=None, class_names=None):
+def detect_and_draw_image(model, image_path=None):
+    """Run model detection and generate the result image"""
+    class_names = ['BG']
+    class_names.extend(CLASS_NAME.keys())
     if image_path:
-        # Run model detection and generate the color splash effect
-        print("Running on {}".format(args.image))
         # Read image
         image = skimage.io.imread(args.image)
         # Detect objects
         r = model.detect([image], verbose=1)[0]
+        image_result = display_instances(image, r['rois'], r['masks'], r['class_ids'], 
+                        class_names, r['scores'],
+                        title="Predictions")
+        cv2.namedWindow("result", cv2.WINDOW_NORMAL)
+        cv2.imshow("result", image_result)
+        # Save output
+        file_name = "result_{:%Y%m%dT%H%M%S}.png".format(datetime.datetime.now())
+        skimage.io.imsave(file_name, image_result)
 
-        # Display results
-        ax = get_ax(1)
-        display_instances(image, r['rois'], r['masks'], r['class_ids'], 
-                                    class_names, r['scores'], ax=ax,
-                                    title="Predictions")
 
 def detect_and_color_splash(model, image_path=None, video_path=None):
+    """Run model detection and generate the color splash effect"""
+
     assert image_path or video_path
 
     # Image or video?
     if image_path:
-        # Run model detection and generate the color splash effect
         print("Running on {}".format(image_path))
         # Read image
         image = skimage.io.imread(image_path)
@@ -310,6 +320,8 @@ def detect_and_color_splash(model, image_path=None, video_path=None):
     print("Saved to ", file_name)
 
 def detect_and_color_splash_video(model, video_path=None, output_path="splash.mov"):
+    """Input video, run inference and output video with color splash - where the mask
+    is used to show the original colors of the image"""
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
@@ -357,7 +369,10 @@ def detect_and_color_splash_video(model, video_path=None, output_path="splash.mo
             break
 
 def detect_classic_in_video(model, video_path=None, output_path="detection.mov"):
-    class_names = ['BG', CLASS_NAME]
+    """Input video, run inference and output video with masks, bounding boxes for
+    all instances including class name and score"""
+    class_names = ['BG']
+    class_names.extend(CLASS_NAME.keys())
     vid = cv2.VideoCapture(video_path)
     if not vid.isOpened():
         raise IOError("Couldn't open webcam or video")
@@ -381,15 +396,8 @@ def detect_classic_in_video(model, video_path=None, output_path="detection.mov")
             image = frame[..., ::-1]
             # Detect objects
             r = model.detect([image], verbose=0)[0]
-            # RGB -> BGR for OpenCV
-            image = image[..., ::-1]
-            # Display results
-            ax = get_ax(1)
-            image_file = display_instances(frame, r['rois'], r['masks'], r['class_ids'], 
-                                        class_names, r['scores'],
-                                        title="Predictions")
 
-            curr_time = timer()
+            # Inference speed
             exec_time = curr_time - prev_time
             prev_time = curr_time
             accum_time = accum_time + exec_time
@@ -398,6 +406,12 @@ def detect_classic_in_video(model, video_path=None, output_path="detection.mov")
                 accum_time = accum_time - 1
                 fps = "FPS: " + str(curr_fps)
                 curr_fps = 0
+
+            # RGB -> BGR for OpenCV
+            image = image[..., ::-1]
+            image_file = display_instances(frame, r['rois'], r['masks'], r['class_ids'], 
+                            class_names, r['scores'],
+                            title="Predictions")
             cv2.putText(image_file, text=fps, org=(3, 15), fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                         fontScale=0.50, color=(255, 0, 0), thickness=2)
             cv2.namedWindow("result", cv2.WINDOW_NORMAL)
@@ -495,19 +509,17 @@ if __name__ == '__main__':
     else:
         model.load_weights(weights_path, by_name=True)
 
-    # Train or evaluate
+    # Train or run inference
     if args.command == "train":
         train(model)
     elif args.command == 'image':
-         detect_and_draw_image(model, image_path=args.image, class_names=['BG', 'class1'])
+        detect_and_draw_image(model, image_path=args.image)
     elif args.command == "splash":
-        detect_and_color_splash(model, image_path=args.image,
-                                video_path=args.video)
+        detect_and_color_splash(model, image_path=args.image)
     elif args.command == "splash_movie":
         detect_and_color_splash_video(model, video_path=args.video)
     elif args.command == "classic_movie":
         detect_classic_in_video(model, video_path=args.video)
-    
     else:
         print("'{}' is not recognized. "
               "Use 'train', 'splash', 'splash_movie' or 'classic_movie'".format(args.command))
