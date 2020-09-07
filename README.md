@@ -98,6 +98,18 @@ Navigate to this repo for an example application to demo the model:  https://git
 ## Credits
 
 - [Mask R-CNN for Object Detection and Segmentation codebase](https://github.com/matterport/Mask_RCNN)
+
+    - Associated paper:
+    ```
+    @misc{matterport_maskrcnn_2017,
+      title={Mask R-CNN for object detection and instance segmentation on Keras and TensorFlow},
+      author={Waleed Abdulla},
+      year={2017},
+      publisher={Github},
+      journal={GitHub repository},
+      howpublished={\url{https://github.com/matterport/Mask_RCNN}},
+    }
+    ```
 - [Splash of Color: Instance Segmentation with Mask R-CNN and TensorFlow](https://engineering.matterport.com/splash-of-color-instance-segmentation-with-mask-r-cnn-and-tensorflow-7c761e238b46)
 - [Cat face image collection](https://github.com/Ferlix/Cat-faces-dataset)
 
