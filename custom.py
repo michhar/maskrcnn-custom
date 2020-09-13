@@ -60,7 +60,7 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 # through the command line argument --logs
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
-# CLASS NAME - USER MUST UPDATE!
+# CLASS NAME - USER MUST UPDATE and it must match names in .json annotation files
 CLASS_NAME = {'eye':1, 'nose':2}
 
 ############################################################
@@ -87,6 +87,10 @@ class CustomConfig(Config):
 
     # Skip detections with < 90% confidence
     DETECTION_MIN_CONFIDENCE = 0.9
+
+    # Input image dim for network
+    IMAGE_MIN_DIM = 256
+    IMAGE_MAX_DIM = 448
 
 
 ############################################################
@@ -124,7 +128,6 @@ class CustomDataset(utils.Dataset):
         # }
         # We mostly care about the x and y coordinates of each region
         annotations_dict = json.load(open(os.path.join(dataset_dir, "via_region_data.json")))
-        # print(annotations1)
         annotations = list(annotations_dict.values())  # don't need the dict keys
 
         # The VIA tool saves images in the JSON even if they don't have any
@@ -139,9 +142,7 @@ class CustomDataset(utils.Dataset):
             # shape_attributes (see json format above)
             polygons = [r['shape_attributes'] for r in a['regions']]
             class_names_each_region = [r['region_attributes']['type'] if 'type' in r['region_attributes'] 
-                                          else r['region_attributes']['type'] for r in a['regions']]
-            print(a['filename'], class_names_each_region)
-
+                                          else r['region_attributes']['category_id'] for r in a['regions']]
 
             # load_mask() needs the image size to convert polygons to masks.
             # Unfortunately, VIA doesn't include it in JSON, so we must read
@@ -389,26 +390,25 @@ def detect_classic_in_video(model, video_path=None, output_path="detection.mov")
         print("!!! TYPE:", type(output_path), type(video_FourCC), type(video_fps), type(video_size))
         out = cv2.VideoWriter(output_path, video_FourCC, video_fps, video_size)
     accum_time = 0
-    curr_fps = 0
     fps = "FPS: ??"
-    prev_time = timer()
     while True:
         return_value, frame = vid.read()
         if return_value:
+            prev_time = timer()
             # OpenCV returns images as BGR, convert to RGB
             image = frame[..., ::-1]
             # Detect objects
             r = model.detect([image], verbose=0)[0]
 
             # Inference speed
+            curr_time = timer()
             exec_time = curr_time - prev_time
             prev_time = curr_time
             accum_time = accum_time + exec_time
-            curr_fps = curr_fps + 1
             if accum_time > 1:
                 accum_time = accum_time - 1
-                fps = "FPS: " + str(curr_fps)
-                curr_fps = 0
+                fps = "FPS for inference: {:.2f}".format(1/exec_time)
+                print(fps)
 
             # RGB -> BGR for OpenCV
             image = image[..., ::-1]
