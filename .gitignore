@@ -7,7 +7,8 @@ result_*
 *.h5
 data*
 logs/
-test/
+test*
+*videos/
 
 .DS_Store
 

@@ -1,11 +1,12 @@
 """
-Mask R-CNN
-Train on a single class dataset and implement color splash effect.
+Mask R-CNN in Keras with TensorFlow backend.
+Train on a single or multiple class dataset and
+run inference on image, webcam or video.
 
 Copyright (c) 2018 Matterport, Inc.
 Licensed under the MIT License (see LICENSE for details)
 Written by Waleed Abdulla
-Modified by Micheleen Harris
+Modified by Micheleen Harris (2020)
 
 ------------------------------------------------------------
 
@@ -22,13 +23,13 @@ Usage: import the module (see Jupyter notebooks for examples), or run from
     python3 custom.py train --dataset=/path/to/balloon/dataset --weights=imagenet
 
     # Apply color splash to an image
-    python3 custom.py splash --weights=/path/to/weights/file.h5 --image=<URL or path to file>
+    python3 custom.py splash --weights=/path/to/weights/file.h5 --image=<webcam, URL or path to file>
 
     # Apply color splash to video using the last weights you trained
-    python3 custom.py splash_movie --weights=last --video=<URL or path to file>
+    python3 custom.py splash_movie --weights=last --video=<webcam, URL or path to file>
 
     # Apply regular detection and masking to video
-    python3 custom.py classic_movie  --weights=/path/to/weights/file.h5 --video=<URL or path to file>
+    python3 custom.py classic_movie  --weights=/path/to/weights/file.h5 --video=<webcam, URL or path to file>
 """
 
 import os
@@ -37,6 +38,7 @@ import json
 import datetime
 import numpy as np
 import skimage.draw
+import imgaug
 import cv2
 import matplotlib.pyplot as plt
 from timeit import default_timer as timer
@@ -61,7 +63,9 @@ COCO_WEIGHTS_PATH = os.path.join(ROOT_DIR, "mask_rcnn_coco.h5")
 DEFAULT_LOGS_DIR = os.path.join(ROOT_DIR, "logs")
 
 # CLASS NAME - USER MUST UPDATE and it must match names in .json annotation files
-CLASS_NAME = {'eye':1, 'nose':2}
+# CLASS_NAME = {'eye':1, 'nose':2}
+
+CLASS_NAME = {'fish':1}
 
 ############################################################
 #  Configurations
@@ -91,6 +95,9 @@ class CustomConfig(Config):
     # Input image dim for network
     IMAGE_MIN_DIM = 256
     IMAGE_MAX_DIM = 448
+
+    # Learning rate
+    LEARNING_RATE=0.0001
 
 
 ############################################################
@@ -152,7 +159,7 @@ class CustomDataset(utils.Dataset):
             height, width = image.shape[:2]
 
             self.add_image(
-                source=class_names_each_region,  ## for a single class only right now
+                source=class_names_each_region,
                 image_id=a['filename'],  # use file name as a unique image id
                 path=image_path,
                 width=width, height=height,
@@ -197,7 +204,7 @@ class CustomDataset(utils.Dataset):
             super(self.__class__, self).image_reference(image_id)
 
 
-def train(model):
+def train(model, epochs):
     """Train the model."""
     # Training dataset.
     dataset_train = CustomDataset()
@@ -213,11 +220,23 @@ def train(model):
     # Since we're using a very small dataset, and starting from
     # COCO trained weights, we don't need to train too long. Also,
     # no need to train all layers, just the heads should do it.
+    augmentation = imgaug.augmenters.Sometimes(0.1, [
+                    imgaug.augmenters.Fliplr(0.5),
+                    imgaug.augmenters.GaussianBlur(sigma=(0.0, 0.5)),
+                    imgaug.augmenters.Affine(
+                        scale={"x": (0.8, 1.2), "y": (0.8, 1.2)},
+                        translate_percent={"x": (-0.2, 0.2), "y": (-0.2, 0.2)},
+                        rotate=(-25, 25),
+                        shear=(-8, 8)
+                    )
+                ])
+
     print("Training network heads")
     model.train(dataset_train, dataset_val,
                 learning_rate=config.LEARNING_RATE,
-                epochs=40,
-                layers='heads')
+                epochs=epochs,
+                layers='heads',
+                augmentation=None)
 
 
 def color_splash(image, mask):
@@ -453,6 +472,10 @@ if __name__ == '__main__':
     parser.add_argument('--video', required=False,
                         metavar="path or URL to video",
                         help='Video to apply the color splash effect on')
+    parser.add_argument('--epochs', required=False,
+                        default=40,
+                        type=int,
+                        help='Number of epochs to train on')
     args = parser.parse_args()
 
     # Validate arguments
@@ -514,7 +537,7 @@ if __name__ == '__main__':
 
     # Train or run inference
     if args.command == "train":
-        train(model)
+        train(model, args.epochs)
     elif args.command == 'image':
         detect_and_draw_image(model, image_path=args.image)
     elif args.command == "splash":
