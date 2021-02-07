@@ -1,5 +1,5 @@
 ## Use for CPU
-tensorflow==1.14.0
+tensorflow==2.4.0
 
 ## Uncomment if you have CUDA-enabled GPU
 # tensorflow-gpu==1.14.0
